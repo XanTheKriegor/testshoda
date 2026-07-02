@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Tajná shoda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#1B1230;
+    --ink-2:#251A3D;
+    --ink-3:#2E2049;
+    --parchment:#EFE6D8;
+    --gold:#C9A24B;
+    --gold-bright:#E0BD6E;
+    --rose:#B5616B;
+    --sage:#7C9A82;
+    --text-light:#F3ECDF;
+    --text-muted:#A79BC4;
+    --serif:'Fraunces', serif;
+    --sans:'Work Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--text-light);
+    font-family:var(--sans);
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+  }
+  .app{
+    width:100%;
+    max-width:520px;
+  }
+  .eyebrow{
+    font-family:var(--sans);
+    text-transform:uppercase;
+    letter-spacing:.18em;
+    font-size:12px;
+    color:var(--gold-bright);
+    margin:0 0 8px 0;
+    text-align:center;
+  }
+  h1{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:38px;
+    text-align:center;
+    margin:0 0 6px 0;
+    letter-spacing:-.01em;
+  }
+  .sub{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:15px;
+    margin:0 0 36px 0;
+    line-height:1.5;
+  }
+  .card{
+    background:var(--ink-2);
+    border:1px solid rgba(201,162,75,0.18);
+    border-radius:18px;
+    padding:28px;
+    margin-bottom:18px;
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,0.6);
+  }
+  .card h2{
+    font-family:var(--serif);
+    font-size:22px;
+    font-weight:600;
+    margin:0 0 4px 0;
+  }
+  .card p.hint{
+    color:var(--text-muted);
+    font-size:13.5px;
+    margin:0 0 18px 0;
+    line-height:1.5;
+  }
+  label{
+    display:block;
+    font-size:13px;
+    color:var(--text-muted);
+    margin-bottom:6px;
+    font-weight:500;
+  }
+  input[type=text], textarea{
+    width:100%;
+    background:var(--ink);
+    border:1px solid rgba(167,155,196,0.25);
+    color:var(--text-light);
+    border-radius:10px;
+    padding:12px 14px;
+    font-family:var(--sans);
+    font-size:15px;
+    resize:vertical;
+  }
+  input[type=text]:focus, textarea:focus{
+    outline:2px solid var(--gold);
+    outline-offset:1px;
+    border-color:transparent;
+  }
+  textarea{min-height:150px; line-height:1.6;}
+  .field{margin-bottom:16px;}
+  .row{display:flex; gap:12px;}
+  .row > *{flex:1;}
+  button{
+    font-family:var(--sans);
+    font-weight:600;
+    font-size:15px;
+    border-radius:10px;
+    border:none;
+    padding:13px 20px;
+    cursor:pointer;
+    transition:transform .12s ease, filter .12s ease;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:active{transform:scale(0.98);}
+  button:focus-visible{outline:2px solid var(--gold-bright); outline-offset:2px;}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  .btn-primary{
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold));
+    color:#241705;
+    width:100%;
+  }
+  .btn-secondary{
+    background:transparent;
+    color:var(--text-light);
+    border:1px solid rgba(167,155,196,0.35);
+    width:100%;
+  }
+  .btn-ghost{
+    background:transparent;
+    color:var(--text-muted);
+    font-size:13px;
+    padding:6px 4px;
+  }
+  .divider{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    color:var(--text-muted);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    margin:26px 0;
+  }
+  .divider::before, .divider::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:rgba(167,155,196,0.2);
+  }
+  .role-toggle{display:flex; gap:10px; margin-bottom:18px;}
+  .role-btn{
+    flex:1;
+    background:var(--ink);
+    border:1px solid rgba(167,155,196,0.25);
+    color:var(--text-muted);
+    border-radius:10px;
+    padding:12px;
+    text-align:center;
+    cursor:pointer;
+    font-weight:600;
+  }
+  .role-btn.active{
+    border-color:var(--gold);
+    color:var(--gold-bright);
+    background:rgba(201,162,75,0.08);
+  }
+  .code-display{
+    font-family:var(--serif);
+    font-size:34px;
+    letter-spacing:.12em;
+    text-align:center;
+    color:var(--gold-bright);
+    background:var(--ink);
+    border:1px dashed rgba(201,162,75,0.4);
+    border-radius:12px;
+    padding:16px;
+    margin:14px 0;
+    user-select:all;
+  }
+  .item-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    padding:14px 0;
+    border-bottom:1px solid rgba(167,155,196,0.12);
+  }
+  .item-row:last-child{border-bottom:none;}
+  .item-text{font-size:15.5px; line-height:1.4;}
+  .yn{display:flex; gap:6px; flex-shrink:0;}
+  .yn button{
+    padding:8px 14px;
+    font-size:13px;
+    border-radius:8px;
+    border:1px solid rgba(167,155,196,0.3);
+    background:var(--ink);
+    color:var(--text-muted);
+    width:auto;
+  }
+  .yn button.yes.sel{background:var(--sage); border-color:var(--sage); color:#0E1A11;}
+  .yn button.no.sel{background:var(--rose); border-color:var(--rose); color:#2A0D10;}
+  .progress-bar{
+    height:5px;
+    border-radius:3px;
+    background:rgba(167,155,196,0.15);
+    overflow:hidden;
+    margin-bottom:22px;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--gold), var(--gold-bright));
+    transition:width .25s ease;
+  }
+  .seal-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px 0 8px 0;
+  }
+  .seal{
+    width:120px; height:120px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:18px;
+  }
+  .seal svg{width:100%; height:100%;}
+  .pulse{animation:pulse 2.4s ease-in-out infinite;}
+  @keyframes pulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.05);}
+  }
+  .waiting-text{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:14px;
+    line-height:1.6;
+    margin-bottom:6px;
+  }
+  .match-count{
+    font-family:var(--serif);
+    font-size:52px;
+    font-weight:600;
+    text-align:center;
+    color:var(--gold-bright);
+    line-height:1;
+    margin:6px 0 2px 0;
+  }
+  .match-label{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    margin-bottom:26px;
+  }
+  .match-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:13px 16px;
+    background:rgba(124,154,130,0.1);
+    border:1px solid rgba(124,154,130,0.3);
+    border-radius:10px;
+    margin-bottom:10px;
+    font-size:15px;
+  }
+  .match-item .check{
+    color:var(--sage);
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .empty-note{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:14px;
+    line-height:1.6;
+    padding:20px 0;
+  }
+  .error-text{
+    color:var(--rose);
+    font-size:13px;
+    margin-top:-8px;
+    margin-bottom:14px;
+    display:none;
+  }
+  .footnote{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:12px;
+    line-height:1.6;
+    margin-top:20px;
+    opacity:.75;
+  }
+  .link-copy{
+    display:flex;
+    gap:8px;
+  }
+  .link-copy input{flex:1;}
+  .link-copy button{width:auto; flex-shrink:0;}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyB9LZu9ExDcuzpdrD0tjLoiHFI6amu2cik",
+  authDomain: "test-8c6fe.firebaseapp.com",
+  projectId: "test-8c6fe",
+  storageBucket: "test-8c6fe.firebasestorage.app",
+  messagingSenderId: "419426633105",
+  appId: "1:419426633105:web:91d04d4af75d7e17510630"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ROOMS = 'rooms';
+const app = document.getElementById('app');
+
+let state = {
+  screen: 'home', // home, create, join, checklist, waiting, results
+  code: null,
+  items: [],
+  role: null, // 'p1' or 'p2'
+  answers: {}, // idx -> true/false
+  polling: null,
+  error: ''
+};
+
+const TEMPLATE_ITEMS = [
+  "Zajet o víkendu někam, kam jsme ještě nebyli",
+  "Vyzkoušet nové exotické jídlo doma",
+  "Naučit se spolu tancovat",
+  "Udělat si večer bez telefonů",
+  "Vyrazit na vícedenní výlet do hor",
+  "Zajít na koncert nebo festival",
+  "Udělat si společný fotoalbum",
+  "Vyzkoušet escape room",
+  "Zajít na degustaci vína",
+  "Naplánovat společnou dovolenou v zahraničí",
+  "Vyzkoušet jógu nebo meditaci spolu",
+  "Zajít na masáž ve dvou",
+  "Uspořádat večer deskových her s přáteli",
+  "Vyzkoušet paddleboarding nebo kajak",
+  "Udělat si piknik v přírodě"
+];
+
+function genCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for(let i=0;i<5;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  return c;
+}
+
+async function storeGet(code){
+  try{
+    const snap = await db.collection(ROOMS).doc(code).get();
+    return snap.exists ? snap.data() : null;
+  }catch(e){
+    console.error(e);
+    return null;
+  }
+}
+async function roomCreate(code, items){
+  await db.collection(ROOMS).doc(code).set({
+    items,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+async function roomSubmitAnswers(code, role, answers){
+  await db.collection(ROOMS).doc(code).set({
+    [role]: { answers, submittedAt: firebase.firestore.FieldValue.serverTimestamp() }
+  }, { merge: true });
+}
+
+function render(){
+  if(state.screen==='home') return renderHome();
+  if(state.screen==='create') return renderCreate();
+  if(state.screen==='join') return renderJoin();
+  if(state.screen==='role') return renderRole();
+  if(state.screen==='checklist') return renderChecklist();
+  if(state.screen==='waiting') return renderWaiting();
+  if(state.screen==='results') return renderResults();
+}
+
+function shell(inner){
+  app.innerHTML = `
+    <p class="eyebrow">Dva lidé &middot; jedno tajemství</p>
+    <h1>Tajná shoda</h1>
+    <p class="sub">Každý zaškrtne své odpovědi v soukromí. Uvidíte jen to, na čem jste se oba shodli — nikdy to, kde jste řekli ne.</p>
+    ${inner}
+  `;
+}
+
+function renderHome(){
+  shell(`
+    <div class="card">
+      <h2>Založit nový seznam</h2>
+      <p class="hint">Vytvoříš seznam věcí a dostaneš kód, který pošleš druhé osobě.</p>
+      <button class="btn-primary" onclick="goCreate()">Vytvořit seznam</button>
+    </div>
+    <div class="divider">nebo</div>
+    <div class="card">
+      <h2>Mám kód</h2>
+      <p class="hint">Někdo ti poslal kód seznamu — zadej ho a připoj se.</p>
+      <div class="field">
+        <input type="text" id="joinCodeInput" placeholder="např. K7QX2" style="text-transform:uppercase; text-align:center; font-family:var(--serif); font-size:20px; letter-spacing:.1em;" maxlength="5">
+      </div>
+      <button class="btn-secondary" onclick="submitJoinCode()">Připojit se</button>
+    </div>
+  `);
+}
+
+function goCreate(){ state.screen='create'; render(); }
+
+function renderCreate(){
+  shell(`
+    <div class="card">
+      <h2>Co bude na seznamu?</h2>
+      <p class="hint">Jedna věc na řádek. Klidně uprav šablonu, nebo napiš vlastní.</p>
+      <div class="field">
+        <label for="itemsArea">Položky seznamu</label>
+        <textarea id="itemsArea">${TEMPLATE_ITEMS.join('\n')}</textarea>
+      </div>
+      <button class="btn-ghost" onclick="clearTemplate()">Vymazat a napsat vlastní</button>
+      <div style="height:8px"></div>
+      <button class="btn-primary" onclick="createRoom()">Zapečetit a vytvořit kód</button>
+      <p class="error-text" id="createError">Napiš aspoň jednu položku.</p>
+    </div>
+    <button class="btn-ghost" onclick="goHome()">&larr; Zpět</button>
+  `);
+}
+
+function clearTemplate(){
+  document.getElementById('itemsArea').value = '';
+  document.getElementById('itemsArea').focus();
+}
+
+function goHome(){
+  if(state.unsubscribe) state.unsubscribe();
+  state.screen = 'home';
+  state.code = null; state.items = []; state.role = null; state.answers = {};
+  render();
+}
+
+async function createRoom(){
+  const raw = document.getElementById('itemsArea').value;
+  const items = raw.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(items.length===0){
+    document.getElementById('createError').style.display='block';
+    return;
+  }
+  const code = genCode();
+  try{
+    await roomCreate(code, items);
+  }catch(e){
+    document.getElementById('createError').textContent = 'Nepodařilo se uložit seznam: ' + (e && e.message ? e.message : 'zkus to prosím znovu.');
+    document.getElementById('createError').style.display='block';
+    return;
+  }
+  state.code = code;
+  state.items = items;
+  state.screen = 'role';
+  render();
+}
+
+function submitJoinCode(){
+  const val = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if(!val){ return; }
+  state.code = val;
+  state.screen = 'join';
+  render();
+  loadRoomForJoin();
+}
+
+async function loadRoomForJoin(){
+  const room = await storeGet(state.code);
+  if(!room){
+    shell(`
+      <div class="card">
+        <p class="empty-note">Kód <strong>${state.code}</strong> jsme nenašli. Zkontroluj, jestli je napsaný správně.</p>
+        <button class="btn-secondary" onclick="goHome()">Zkusit znovu</button>
+      </div>
+    `);
+    return;
+  }
+  state.items = room.items;
+  state.screen = 'role';
+  render();
+}
+
+function renderJoin(){
+  shell(`<div class="card"><p class="empty-note">Hledám seznam…</p></div>`);
+}
+
+function renderRole(){
+  shell(`
+    <div class="card">
+      <h2>Kód seznamu</h2>
+      <p class="hint">Pošli tento kód druhé osobě, ať se může připojit.</p>
+      <div class="code-display">${state.code}</div>
+    </div>
+    <div class="card">
+      <h2>Kdo jsi ty?</h2>
+      <p class="hint">Vyberte si mezi sebou, kdo je Osoba 1 a kdo Osoba 2 — každý zvolí jinou.</p>
+      <div class="role-toggle">
+        <div class="role-btn" id="roleBtnP1" onclick="pickRole('p1')">Jsem Osoba 1</div>
+        <div class="role-btn" id="roleBtnP2" onclick="pickRole('p2')">Jsem Osoba 2</div>
+      </div>
+      <button class="btn-primary" id="roleContinueBtn" disabled onclick="startChecklist()">Pokračovat</button>
+    </div>
+    <button class="btn-ghost" onclick="goHome()">&larr; Začít znovu</button>
+  `);
+}
+
+function pickRole(r){
+  state.role = r;
+  document.getElementById('roleBtnP1').classList.toggle('active', r==='p1');
+  document.getElementById('roleBtnP2').classList.toggle('active', r==='p2');
+  document.getElementById('roleContinueBtn').disabled = false;
+}
+
+async function startChecklist(){
+  const room = await storeGet(state.code);
+  const existing = room ? room[state.role] : null;
+  if(existing && existing.submittedAt){
+    state.answers = {};
+    existing.answers.forEach((v,i)=>{ if(v!==null) state.answers[i]=v; });
+    state.screen = 'waiting';
+    render();
+    startPolling();
+    return;
+  }
+  state.answers = {};
+  state.screen = 'checklist';
+  render();
+}
+
+function renderChecklist(){
+  const answeredCount = Object.keys(state.answers).length;
+  const total = state.items.length;
+  const rows = state.items.map((text, i)=>`
+    <div class="item-row">
+      <div class="item-text">${escapeHtml(text)}</div>
+      <div class="yn">
+        <button class="yes ${state.answers[i]===true?'sel':''}" onclick="setAnswer(${i}, true)">Ano</button>
+        <button class="no ${state.answers[i]===false?'sel':''}" onclick="setAnswer(${i}, false)">Ne</button>
+      </div>
+    </div>
+  `).join('');
+
+  shell(`
+    <div class="card">
+      <h2>Tvoje odpovědi</h2>
+      <p class="hint">Nikdo je neuvidí, dokud oba nedokončíte. Zaškrtni ano nebo ne u každé položky.</p>
+      <div class="progress-bar"><div class="progress-fill" style="width:${total?Math.round(answeredCount/total*100):0}%"></div></div>
+      ${rows}
+      <div style="height:8px"></div>
+      <button class="btn-primary" id="submitBtn" ${answeredCount<total?'disabled':''} onclick="submitAnswers()">Zapečetit odpovědi (${answeredCount}/${total})</button>
+    </div>
+  `);
+}
+
+function setAnswer(i, val){
+  state.answers[i] = val;
+  renderChecklist();
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function submitAnswers(){
+  const arr = state.items.map((_,i)=> state.answers[i] ?? null);
+  await roomSubmitAnswers(state.code, state.role, arr);
+  state.screen = 'waiting';
+  render();
+  startPolling();
+}
+
+function renderWaiting(){
+  shell(`
+    <div class="card">
+      <div class="seal-wrap">
+        <div class="seal pulse">
+          <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="56" fill="var(--ink)" stroke="var(--gold)" stroke-width="2"/>
+            <circle cx="60" cy="60" r="44" fill="none" stroke="var(--gold)" stroke-width="1" opacity="0.5"/>
+            <text x="60" y="70" text-anchor="middle" font-family="Fraunces, serif" font-size="34" fill="var(--gold-bright)">?</text>
+          </svg>
+        </div>
+        <p class="waiting-text">Tvoje odpovědi jsou zapečetěné.<br>Čeká se, až dokončí i druhá osoba…</p>
+      </div>
+    </div>
+    <button class="btn-ghost" onclick="checkNow()">Zkontrolovat teď</button>
+  `);
+}
+
+function startPolling(){
+  if(state.unsubscribe) state.unsubscribe();
+  state.unsubscribe = db.collection(ROOMS).doc(state.code).onSnapshot(snap=>{
+    if(!snap.exists) return;
+    const data = snap.data();
+    const p1 = data.p1, p2 = data.p2;
+    if(p1 && p1.submittedAt && p2 && p2.submittedAt){
+      if(state.unsubscribe) state.unsubscribe();
+      state.screen = 'results';
+      state.finalP1 = p1.answers;
+      state.finalP2 = p2.answers;
+      render();
+    }
+  }, err=>{
+    console.error(err);
+  });
+}
+
+async function checkNow(){
+  const room = await storeGet(state.code);
+  if(!room) return;
+  const p1 = room.p1, p2 = room.p2;
+  if(p1 && p1.submittedAt && p2 && p2.submittedAt){
+    if(state.unsubscribe) state.unsubscribe();
+    state.screen = 'results';
+    state.finalP1 = p1.answers;
+    state.finalP2 = p2.answers;
+    render();
+  }
+}
+
+function renderResults(){
+  const matches = [];
+  state.items.forEach((text,i)=>{
+    if(state.finalP1[i]===true && state.finalP2[i]===true){
+      matches.push(text);
+    }
+  });
+  const body = matches.length ? matches.map(t=>`
+    <div class="match-item"><span class="check">&#10003;</span><span>${escapeHtml(t)}</span></div>
+  `).join('') : `<p class="empty-note">Tentokrát se vaše ano nepotkala. Zkuste to s jiným seznamem &mdash; někdy je shoda jinde, než čekáte.</p>`;
+
+  shell(`
+    <div class="card">
+      <div class="match-count">${matches.length}</div>
+      <div class="match-label">shod z ${state.items.length}</div>
+      ${body}
+    </div>
+    <button class="btn-secondary" onclick="goHome()">Vytvořit nový seznam</button>
+    <p class="footnote">Odpovědi, kde někdo řekl ne, zůstávají navždy soukromé &mdash; nejsou zobrazeny nikde ani jednomu z vás.<br>Data běží na tvé vlastní Firebase databázi.</p>
+  `);
+}
+
+render();
+</script>
+</body>
+</html>
