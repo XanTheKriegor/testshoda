@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Na stejné vlně</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#1A1420;
+    --ink-2:#241C2C;
+    --ink-3:#2E2337;
+    --gold:#C9A24B;
+    --gold-bright:#E0BD6E;
+    --text-light:#F4EEE8;
+    --text-muted:#A8998F;
+    --p1:#F0917F;
+    --p1-glow:rgba(240,145,127,0.4);
+    --p2:#6FBFB0;
+    --p2-glow:rgba(111,191,176,0.4);
+    --serif:'Fraunces', serif;
+    --sans:'Work Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(circle at 50% 0%, #2A2032 0%, var(--ink) 60%);
+    color:var(--text-light);
+    font-family:var(--sans);
+    min-height:100vh;
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:32px 14px;
+  }
+  .app{width:100%; max-width:540px;}
+  .eyebrow{text-transform:uppercase; letter-spacing:.18em; font-size:12px; color:var(--gold-bright); text-align:center; margin:0 0 8px 0;}
+  h1{font-family:var(--serif); font-weight:700; font-size:36px; text-align:center; margin:0 0 6px 0;}
+  .sub{text-align:center; color:var(--text-muted); font-size:15px; margin:0 0 26px 0; line-height:1.5;}
+  .card{
+    background:var(--ink-2); border:1px solid rgba(201,162,75,0.16);
+    border-radius:18px; padding:26px; margin-bottom:16px;
+    box-shadow:0 24px 60px -24px rgba(0,0,0,0.65);
+  }
+  .card h2{font-family:var(--serif); font-size:21px; font-weight:600; margin:0 0 4px 0;}
+  .card p.hint{color:var(--text-muted); font-size:13.5px; margin:0 0 18px 0; line-height:1.5;}
+  input[type=text]{
+    width:100%; background:var(--ink); border:1px solid rgba(168,153,143,0.28);
+    color:var(--text-light); border-radius:10px; padding:13px 14px;
+    font-family:var(--sans); font-size:16px;
+  }
+  input[type=text].code-input{ text-align:center; text-transform:uppercase; letter-spacing:.1em; }
+  input[type=text]:focus{outline:2px solid var(--gold); outline-offset:1px; border-color:transparent;}
+  button{
+    font-family:var(--sans); font-weight:700; font-size:15px; border-radius:10px;
+    border:none; padding:13px 20px; cursor:pointer; transition:transform .12s ease, filter .12s ease;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:active{transform:scale(0.98);}
+  button:disabled{opacity:.35; cursor:not-allowed;}
+  .btn-primary{background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#241705; width:100%;}
+  .btn-secondary{background:transparent; color:var(--text-light); border:1px solid rgba(168,153,143,0.32); width:100%;}
+  .btn-ghost{background:transparent; color:var(--text-muted); font-size:13px; padding:6px 4px;}
+  .divider{display:flex; align-items:center; gap:12px; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:.12em; margin:24px 0;}
+  .divider::before, .divider::after{content:''; flex:1; height:1px; background:rgba(168,153,143,0.2);}
+  .code-display{
+    font-family:var(--serif); font-size:34px; letter-spacing:.12em; text-align:center;
+    color:var(--gold-bright); background:var(--ink); border:1px dashed rgba(201,162,75,0.4);
+    border-radius:12px; padding:16px; margin:14px 0; user-select:all;
+  }
+  .error-text{color:var(--p1); font-size:13px; margin-top:-6px; margin-bottom:14px; display:none;}
+
+  .slot-row{
+    display:flex; align-items:center; gap:12px; padding:13px 14px;
+    background:var(--ink); border:1px solid rgba(168,153,143,0.18);
+    border-radius:12px; margin-bottom:10px;
+  }
+  .slot-dot{width:14px; height:14px; border-radius:50%; flex-shrink:0; border:2px solid rgba(168,153,143,0.4); background:transparent;}
+  .slot-dot.filled.p1{background:var(--p1); border-color:var(--p1); box-shadow:0 0 10px var(--p1-glow);}
+  .slot-dot.filled.p2{background:var(--p2); border-color:var(--p2); box-shadow:0 0 10px var(--p2-glow);}
+  .slot-label{font-size:14.5px; font-weight:600;}
+  .slot-status{margin-left:auto; font-size:12.5px; color:var(--text-muted);}
+
+  .set-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:18px;}
+  .set-btn{
+    background:var(--ink); border:1px solid rgba(168,153,143,0.25); border-radius:10px;
+    padding:10px 6px; text-align:center; cursor:pointer;
+  }
+  .set-btn.active{border-color:var(--gold); background:rgba(201,162,75,0.1);}
+  .set-btn .set-num{font-family:var(--serif); font-size:14px; font-weight:600; color:var(--text-light);}
+  .set-btn.active .set-num{color:var(--gold-bright);}
+  .set-btn .set-name{font-size:10.5px; color:var(--text-muted); margin-top:2px; line-height:1.3;}
+
+  .my-role-badge{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-size:13.5px; font-weight:600; color:var(--text-light);
+    background:var(--ink-2); border:1px solid rgba(168,153,143,0.2);
+    border-radius:999px; padding:8px 16px; margin:0 auto 24px auto; width:fit-content;
+  }
+  .my-role-badge .dot{width:11px; height:11px; border-radius:50%; flex-shrink:0;}
+  .my-role-badge .dot.p1{background:var(--p1); box-shadow:0 0 8px var(--p1-glow);}
+  .my-role-badge .dot.p2{background:var(--p2); box-shadow:0 0 8px var(--p2-glow);}
+
+  .hud{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .round-badge{font-family:var(--serif); font-size:15px; color:var(--gold-bright); font-weight:600;}
+  .score-line{font-size:13.5px; color:var(--text-muted); font-weight:600;}
+  .score-line .num{color:var(--gold-bright); font-family:var(--serif); font-size:16px;}
+  .progress-bar{height:5px; border-radius:3px; background:rgba(168,153,143,0.15); overflow:hidden; margin:14px 0 22px 0;}
+  .progress-fill{height:100%; background:linear-gradient(90deg, var(--gold), var(--gold-bright)); transition:width .3s ease;}
+
+  .question-box{
+    text-align:center; padding:22px 10px; margin-bottom:20px;
+  }
+  .question-eyebrow{font-size:12px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-muted); margin-bottom:10px;}
+  .question-text{font-family:var(--serif); font-size:26px; font-weight:600; line-height:1.3;}
+
+  .answer-input{margin-bottom:14px;}
+  .waiting-note{text-align:center; color:var(--text-muted); font-size:14px; margin-bottom:16px; line-height:1.5;}
+  .waiting-note strong{color:var(--text-light);}
+
+  .reveal-row{display:flex; gap:12px; margin-bottom:18px;}
+  .reveal-card{
+    flex:1; background:var(--ink); border-radius:14px; padding:18px 10px;
+    text-align:center; border:2px solid rgba(168,153,143,0.18);
+  }
+  .reveal-card.p1{border-color:rgba(240,145,127,0.35);}
+  .reveal-card.p2{border-color:rgba(111,191,176,0.35);}
+  .reveal-card .who{font-size:12px; color:var(--text-muted); margin-bottom:8px; font-weight:600;}
+  .reveal-card .ans{font-family:var(--serif); font-size:22px; font-weight:700; word-break:break-word;}
+  .reveal-card.p1 .ans{color:var(--p1);} .reveal-card.p2 .ans{color:var(--p2);}
+  .match-banner{
+    text-align:center; padding:14px; border-radius:12px; margin-bottom:18px; font-weight:700; font-size:15px;
+  }
+  .match-banner.yes{background:rgba(201,162,75,0.14); color:var(--gold-bright); border:1px solid rgba(201,162,75,0.4);}
+  .match-banner.no{background:rgba(168,153,143,0.08); color:var(--text-muted); border:1px solid rgba(168,153,143,0.2);}
+
+  .final-score{font-family:var(--serif); font-size:56px; font-weight:800; text-align:center; color:var(--gold-bright); line-height:1; margin:6px 0 4px 0;}
+  .final-score-label{text-align:center; color:var(--text-muted); font-size:13px; text-transform:uppercase; letter-spacing:.12em; margin-bottom:16px;}
+  .tier-message{text-align:center; font-family:var(--serif); font-size:19px; font-weight:600; margin-bottom:24px; color:var(--text-light);}
+  .recap-item{
+    display:flex; align-items:center; gap:12px; padding:12px 14px;
+    background:var(--ink); border-radius:10px; margin-bottom:8px; font-size:13.5px;
+  }
+  .recap-icon{width:20px; text-align:center; flex-shrink:0; font-size:14px;}
+  .recap-q{flex:1; color:var(--text-muted);}
+  .recap-a{font-weight:600; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;}
+  .footnote{text-align:center; color:var(--text-muted); font-size:12px; line-height:1.6; margin-top:18px; opacity:.75;}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyB9LZu9ExDcuzpdrD0tjLoiHFI6amu2cik",
+  authDomain: "test-8c6fe.firebaseapp.com",
+  projectId: "test-8c6fe",
+  storageBucket: "test-8c6fe.firebasestorage.app",
+  messagingSenderId: "419426633105",
+  appId: "1:419426633105:web:91d04d4af75d7e17510630"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const GAMES = 'wavelength2';
+const app = document.getElementById('app');
+const TOTAL_ROUNDS = 10;
+const ROLE_LABEL = { p1:'Hráč 1', p2:'Hráč 2' };
+
+const QUESTION_SETS = [
+  { name: 'Základ', questions: [
+    "Číslo od 1 do 10",
+    "Barva",
+    "Zvíře",
+    "Ovoce",
+    "Roční období",
+    "Den v týdnu",
+    "Písmeno abecedy",
+    "Sladkost",
+    "Nápoj",
+    "Sport"
+  ]},
+  { name: 'My dva', questions: [
+    "Slovo, které popisuje váš vztah",
+    "Místo na první rande, kdybyste ho měli zopakovat",
+    "Jméno pro psa nebo kočku, kterého byste si spolu pořídili",
+    "Věc v domácnosti, kterou máte oba nejraději",
+    "Zvíře, které vás nejvíc vystihuje jako pár",
+    "Píseň, která by mohla být \"vaše\"",
+    "Slovo na dnešní náladu",
+    "Co byste si přáli k výročí",
+    "Místo, kde byste chtěli zestárnout",
+    "Vlastnost, kterou na tom druhém milujete nejvíc, jedním slovem"
+  ]},
+  { name: 'Fantazie a sny', questions: [
+    "Superschopnost, kterou byste chtěli mít",
+    "Planeta, na kterou byste se chtěli podívat",
+    "Postava z pohádky nebo filmu, kterou byste chtěli potkat",
+    "Kdybyste byli zvíře, jaké?",
+    "Kouzlo, které byste si přáli umět",
+    "Éra nebo století, ve kterém byste chtěli žít",
+    "Superhrdina, kterým byste chtěli být",
+    "Kdybyste vyhráli milion, první věc, co koupíte",
+    "Vlastnost, kterou byste chtěli mít navíc",
+    "Jméno pro budoucího mazlíčka"
+  ]},
+  { name: 'Všední den', questions: [
+    "Co byste si dali k snídani",
+    "Jídlo k večeři",
+    "Film, který byste si teď pustili",
+    "Kniha nebo žánr, co byste si teď přečetli",
+    "Hudební nástroj, na který byste se chtěli naučit hrát",
+    "Aplikace v telefonu, kterou používáte nejvíc",
+    "Denní doba, kdy jste nejvíc produktivní",
+    "Věc, na kterou byste se dnes nejvíc těšili po práci",
+    "Emoji, které vystihuje váš den",
+    "Co byste udělali s volným odpolednem navíc"
+  ]},
+  { name: 'Dobrodružství a touhy', questions: [
+    "Dovolenkový cíl snů",
+    "Město, kam byste chtěli spolu vycestovat",
+    "Věc, kterou byste si vzali na pustý ostrov",
+    "Sport, který byste chtěli spolu vyzkoušet",
+    "Adrenalinový zážitek, co byste chtěli zažít",
+    "Země, kde byste chtěli žít rok",
+    "Dopravní prostředek na příští výlet",
+    "Kuchyně nebo styl restaurace, co chcete vyzkoušet",
+    "Festival nebo akce, kam byste chtěli spolu jet",
+    "Jedna věc na vašem společném bucket listu"
+  ]}
+];
+
+let state = {
+  screen: 'home',
+  code: null,
+  role: null,
+  unsubscribe: null,
+  data: null,
+  answerText: '',
+  revealAdvancing: false,
+  lastRoundSeenPlaying: 0,
+  lobbySet: 1
+};
+
+function genCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for(let i=0;i<5;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  return c;
+}
+
+function normalize(s){
+  return (s||'').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
+}
+
+function getQuestionSet(setNumber){
+  const idx = Math.min(Math.max(setNumber,1),QUESTION_SETS.length) - 1;
+  return QUESTION_SETS[idx].questions.slice();
+}
+
+function shell(inner){
+  app.innerHTML = `
+    <p class="eyebrow">Pro dva &middot; deset otázek</p>
+    <h1>Na stejné vlně</h1>
+    <p class="sub">Odpovězte nezávisle na sobě. Shodnete se, nebo jde každý svou hlavou?</p>
+    ${renderMyRoleBadge()}
+    ${inner}
+  `;
+}
+
+function renderMyRoleBadge(){
+  if(!state.role) return '';
+  return `
+    <div class="my-role-badge">
+      <span class="dot ${state.role}"></span>
+      Ty jsi ${ROLE_LABEL[state.role]}
+    </div>
+  `;
+}
+
+// ---------------- HOME ----------------
+function renderHome(){
+  shell(`
+    <div class="card">
+      <h2>Založit hru</h2>
+      <p class="hint">Vytvoříš hru a dostaneš kód. Ty budeš <span style="color:var(--p1)">Hráč 1</span>.</p>
+      <button class="btn-primary" onclick="createLobby()">Založit hru</button>
+    </div>
+    <div class="divider">nebo</div>
+    <div class="card">
+      <h2>Mám kód</h2>
+      <p class="hint">Připojíš se jako druhý hráč.</p>
+      <div class="field" style="margin-bottom:14px;">
+        <input type="text" class="code-input" id="joinCodeInput" placeholder="např. K7QX2" maxlength="5">
+      </div>
+      <button class="btn-secondary" onclick="submitJoinCode()">Připojit se</button>
+      <p class="error-text" id="joinError"></p>
+    </div>
+  `);
+}
+
+async function createLobby(){
+  const code = genCode();
+  try{
+    await db.collection(GAMES).doc(code).set({
+      players: { p1:{joined:true}, p2:{joined:false} },
+      status: 'lobby',
+      round: 1,
+      questionSet: 1,
+      questions: [],
+      currentAnswers: { p1:null, p2:null },
+      scores: { p1:0, p2:0 },
+      lastRoundResult: null,
+      resolvedRound: 0,
+      history: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(e){
+    alert('Nepodařilo se založit hru: ' + (e && e.message ? e.message : e));
+    return;
+  }
+  state.code = code;
+  state.role = 'p1';
+  state.screen = 'lobby';
+  render();
+  listenToRoom();
+}
+
+async function submitJoinCode(){
+  const val = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  const errEl = document.getElementById('joinError');
+  errEl.style.display = 'none';
+  if(!val) return;
+  const ref = db.collection(GAMES).doc(val);
+  const snap = await ref.get();
+  if(!snap.exists){
+    errEl.textContent = 'Kód ' + val + ' jsme nenašli.';
+    errEl.style.display = 'block';
+    return;
+  }
+  const data = snap.data();
+  if(data.players.p2.joined){
+    errEl.textContent = 'Tahle hra už má dva hráče.';
+    errEl.style.display = 'block';
+    return;
+  }
+  await ref.set({ players: { p2:{joined:true} } }, { merge:true });
+  state.code = val;
+  state.role = 'p2';
+  state.screen = 'lobby';
+  render();
+  listenToRoom();
+}
+
+function leaveToHome(){
+  if(state.unsubscribe) state.unsubscribe();
+  state = { screen:'home', code:null, role:null, unsubscribe:null, data:null,
+    answerText:'', revealAdvancing:false, lastRoundSeenPlaying:0, lobbySet:1 };
+  render();
+}
+
+function listenToRoom(){
+  if(state.unsubscribe) state.unsubscribe();
+  state.unsubscribe = db.collection(GAMES).doc(state.code).onSnapshot(snap=>{
+    if(!snap.exists) return;
+    state.data = snap.data();
+    onRoomUpdate();
+  }, err=>{ console.error(err); });
+}
+
+function onRoomUpdate(){
+  const d = state.data;
+  if(d.status === 'lobby'){ state.screen = 'lobby'; render(); return; }
+  if(d.status === 'playing'){
+    if(d.round !== state.lastRoundSeenPlaying){
+      state.lastRoundSeenPlaying = d.round;
+      state.answerText = '';
+      state.revealAdvancing = false;
+    }
+    state.screen = 'game';
+    render();
+    maybeResolveRound();
+    return;
+  }
+  if(d.status === 'reveal'){ state.screen = 'game'; render(); return; }
+  if(d.status === 'finished'){ state.screen = 'final'; render(); return; }
+}
+
+// ---------------- LOBBY ----------------
+function renderLobby(){
+  const d = state.data;
+  const p2ok = d && d.players.p2.joined;
+  shell(`
+    <div class="card">
+      <h2>Kód hry</h2>
+      <p class="hint">Pošli kód partnerovi nebo partnerce, ať se připojí.</p>
+      <div class="code-display">${state.code}</div>
+      ${slotRow('p1', true)}
+      ${slotRow('p2', p2ok)}
+      ${state.role==='p1' ? `
+        <div class="set-picker" style="margin-top:18px;">
+          <p class="hint" style="margin-bottom:10px;">Vyber sadu otázek:</p>
+          <div class="set-grid">
+            ${QUESTION_SETS.map((s,i)=>setBtn(i+1)).join('')}
+          </div>
+        </div>
+        <button class="btn-primary" ${p2ok?'':'disabled'} onclick="startGame()">
+          ${p2ok ? 'Spustit hru' : 'Čeká se na druhého hráče…'}
+        </button>
+      ` : `<p class="hint" style="text-align:center; margin:8px 0 0 0;">Čeká se, až Hráč 1 spustí hru…</p>`}
+    </div>
+    <button class="btn-ghost" onclick="leaveToHome()">&larr; Odejít</button>
+  `);
+}
+
+function setBtn(n){
+  const active = state.lobbySet === n;
+  const setInfo = QUESTION_SETS[n-1];
+  return `
+    <div class="set-btn ${active?'active':''}" onclick="chooseLobbySet(${n})">
+      <div class="set-num">Sada ${n}</div>
+      <div class="set-name">${setInfo.name}</div>
+    </div>
+  `;
+}
+
+function chooseLobbySet(n){
+  state.lobbySet = n;
+  render();
+}
+
+function slotRow(role, filled){
+  const isMe = state.role === role;
+  return `
+    <div class="slot-row">
+      <span class="slot-dot ${filled?'filled '+role:''}"></span>
+      <span class="slot-label">${ROLE_LABEL[role]}${isMe?' (ty)':''}</span>
+      <span class="slot-status">${filled ? 'Připojen' : 'Čeká se…'}</span>
+    </div>
+  `;
+}
+
+async function startGame(){
+  const questions = getQuestionSet(state.lobbySet);
+  await db.collection(GAMES).doc(state.code).set({
+    status:'playing', round:1,
+    questionSet: state.lobbySet,
+    questions,
+    currentAnswers:{p1:null,p2:null},
+    scores:{p1:0,p2:0},
+    lastRoundResult:null, resolvedRound:0,
+    history:[]
+  }, { merge:true });
+}
+
+// ---------------- GAME ----------------
+function renderGame(){
+  const d = state.data;
+  if(d.status === 'reveal'){ renderReveal(); return; }
+
+  const myAnswered = d.currentAnswers[state.role] !== null;
+  const question = d.questions[d.round-1];
+
+  shell(`
+    <div class="card">
+      <div class="hud">
+        <div class="round-badge">Otázka ${d.round} / ${TOTAL_ROUNDS}</div>
+        <div class="score-line"><span class="num">${d.scores.p1}</span> shod</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(d.round-1)/TOTAL_ROUNDS*100}%"></div></div>
+      <div class="question-box">
+        <div class="question-eyebrow">Zamysli se, co by mohl(a) napsat i ten druhý</div>
+        <div class="question-text">${escapeHtml(question)}</div>
+      </div>
+      ${myAnswered ? `
+        <p class="waiting-note">Odpověď odeslána. Čeká se na <strong>${ROLE_LABEL[state.role==='p1'?'p2':'p1']}</strong>…</p>
+      ` : `
+        <div class="answer-input">
+          <input type="text" id="answerInput" placeholder="Tvoje odpověď…" maxlength="40" value="${escapeHtml(state.answerText)}" oninput="state.answerText=this.value" onkeydown="if(event.key==='Enter') submitAnswer();">
+        </div>
+        <button class="btn-primary" onclick="submitAnswer()">Odeslat odpověď</button>
+      `}
+    </div>
+  `);
+  if(!myAnswered){
+    const inp = document.getElementById('answerInput');
+    if(inp) inp.focus();
+  }
+}
+
+function escapeHtml(s){
+  const el = document.createElement('div');
+  el.textContent = s;
+  return el.innerHTML;
+}
+
+async function submitAnswer(){
+  const val = (state.answerText || '').trim();
+  if(!val) return;
+  await db.collection(GAMES).doc(state.code).set({
+    currentAnswers: { [state.role]: val }
+  }, { merge:true });
+}
+
+function renderReveal(){
+  const d = state.data;
+  const res = d.lastRoundResult;
+  const isLast = d.round >= TOTAL_ROUNDS;
+  shell(`
+    <div class="card">
+      <div class="hud">
+        <div class="round-badge">Otázka ${res ? res.round : d.round} / ${TOTAL_ROUNDS}</div>
+        <div class="score-line"><span class="num">${d.scores.p1}</span> shod</div>
+      </div>
+      <div class="question-box" style="padding-top:4px;">
+        <div class="question-text" style="font-size:19px;">${escapeHtml(res ? res.question : '')}</div>
+      </div>
+      <div class="reveal-row">
+        <div class="reveal-card p1"><div class="who">${ROLE_LABEL.p1}</div><div class="ans">${escapeHtml(res?res.answers.p1:'')}</div></div>
+        <div class="reveal-card p2"><div class="who">${ROLE_LABEL.p2}</div><div class="ans">${escapeHtml(res?res.answers.p2:'')}</div></div>
+      </div>
+      <div class="match-banner ${res && res.matched ? 'yes':'no'}">
+        ${res && res.matched ? 'Shoda! Jste na stejné vlně.' : 'Tentokrát ne — každý jinam.'}
+      </div>
+      <button class="btn-primary" onclick="attemptAdvance()">${isLast ? 'Zobrazit výsledek' : 'Další otázka'}</button>
+    </div>
+  `);
+}
+
+// ---------------- resolution (transactions) ----------------
+async function maybeResolveRound(){
+  const d = state.data;
+  if(!d || d.status !== 'playing') return;
+  const a = d.currentAnswers;
+  if(a.p1 === null || a.p2 === null) return;
+  const expectedRound = d.round;
+  try{
+    await db.runTransaction(async (tx)=>{
+      const ref = db.collection(GAMES).doc(state.code);
+      const fresh = await tx.get(ref);
+      if(!fresh.exists) return;
+      const fd = fresh.data();
+      if(fd.status !== 'playing' || fd.round !== expectedRound) return;
+      const fa = fd.currentAnswers;
+      if(fa.p1 === null || fa.p2 === null) return;
+      const matched = normalize(fa.p1) === normalize(fa.p2) && normalize(fa.p1) !== '';
+      const newScores = Object.assign({}, fd.scores);
+      if(matched){ newScores.p1 += 1; newScores.p2 += 1; }
+      const question = fd.questions[expectedRound-1];
+      const resultEntry = { round: expectedRound, question, answers: {p1:fa.p1, p2:fa.p2}, matched };
+      tx.update(ref, {
+        status: 'reveal',
+        scores: newScores,
+        lastRoundResult: resultEntry,
+        resolvedRound: expectedRound,
+        history: firebase.firestore.FieldValue.arrayUnion(resultEntry)
+      });
+    });
+  }catch(e){ console.error(e); }
+}
+
+async function attemptAdvance(){
+  const expectedRound = state.data ? state.data.round : null;
+  try{
+    await db.runTransaction(async (tx)=>{
+      const ref = db.collection(GAMES).doc(state.code);
+      const fresh = await tx.get(ref);
+      if(!fresh.exists) return;
+      const fd = fresh.data();
+      if(fd.status !== 'reveal' || fd.round !== expectedRound) return;
+      if(fd.round >= TOTAL_ROUNDS){
+        tx.update(ref, { status:'finished' });
+      } else {
+        tx.update(ref, {
+          status:'playing',
+          round: fd.round + 1,
+          currentAnswers: {p1:null,p2:null}
+        });
+      }
+    });
+  }catch(e){ console.error(e); }
+}
+
+// ---------------- FINAL ----------------
+function tierMessage(score){
+  if(score >= 9) return 'Naprosto sladěné mysli!';
+  if(score >= 7) return 'Skvělá shoda, jste si hodně blízcí.';
+  if(score >= 5) return 'Slušná shoda, ale najdou se překvapení.';
+  if(score >= 3) return 'Každý svým směrem — a to je taky fajn.';
+  return 'Naprosto odlišné mozky. Aspoň je to zábava.';
+}
+
+function renderFinal(){
+  const d = state.data;
+  const score = d.scores.p1;
+  const history = (d.history || []).slice().sort((a,b)=>a.round-b.round);
+  const recap = history.map(h=>`
+    <div class="recap-item">
+      <div class="recap-icon">${h.matched?'✓':'✕'}</div>
+      <div class="recap-q">${escapeHtml(h.question)}</div>
+      <div class="recap-a">${escapeHtml(h.answers.p1)} / ${escapeHtml(h.answers.p2)}</div>
+    </div>
+  `).join('');
+  shell(`
+    <div class="card">
+      <div class="final-score">${score}/${TOTAL_ROUNDS}</div>
+      <div class="final-score-label">shodných odpovědí</div>
+      <div class="tier-message">${tierMessage(score)}</div>
+      ${recap}
+      <div style="height:8px"></div>
+      <button class="btn-primary" onclick="playAgain()">Hrát znovu</button>
+      <div style="height:8px"></div>
+      <button class="btn-ghost" onclick="leaveToHome()" style="width:100%; text-align:center;">Odejít domů</button>
+    </div>
+    <p class="footnote">Data běží na tvé vlastní Firebase databázi.</p>
+  `);
+}
+
+async function playAgain(){
+  await db.collection(GAMES).doc(state.code).set({
+    status:'lobby', round:1,
+    questions:[],
+    currentAnswers:{p1:null,p2:null},
+    scores:{p1:0,p2:0},
+    lastRoundResult:null, resolvedRound:0,
+    history:[]
+  }, { merge:true });
+}
+
+// ---------------- render dispatch ----------------
+function render(){
+  if(state.screen==='home') return renderHome();
+  if(state.screen==='lobby') return renderLobby();
+  if(state.screen==='game') return renderGame();
+  if(state.screen==='final') return renderFinal();
+}
+
+render();
+</script>
+</body>
+</html>
